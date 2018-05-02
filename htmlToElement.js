@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import htmlparser from "htmlparser2-without-node-native";
 import entities from "entities";
 
@@ -12,6 +12,7 @@ const defaultOpts = {
   TextComponent: Text,
   textComponentProps: null,
   NodeComponent: Text,
+  NodeViewComponent: View,
   nodeComponentProps: null
 };
 
@@ -88,17 +89,16 @@ export default function htmlToElement(rawHtml, customOpts = {}, done) {
       }
 
       const { TextComponent } = opts;
-
       if (node.type === "text") {
         const defaultStyle = opts.textComponentProps ? opts.textComponentProps.style : null;
         const customStyle = inheritedStyle(parent);
-        const nodeStyle = nodeStyles(node.parent && node.parent.attribs['style']);
+        const nodeStyle = nodeStyles(node.parent && node.parent.attribs["style"]);
 
         return (
           <TextComponent
             {...opts.textComponentProps}
             key={index}
-            style={[defaultStyle, customStyle]}
+            style={[defaultStyle, customStyle, nodeStyle]}
           >
             {entities.decodeHTML(node.data)}
           </TextComponent>
@@ -163,21 +163,34 @@ export default function htmlToElement(rawHtml, customOpts = {}, done) {
           }
         }
 
-        const { NodeComponent, styles } = opts;
-
+        const { NodeComponent, NodeViewComponent, styles } = opts;
+        const containsList = node.children.filter(
+          child => child.name === "ul" || child.name === "ol").length > 0;
         return (
-          <NodeComponent
-            {...opts.nodeComponentProps}
-            key={index}
-            onPress={linkPressHandler}
-            style={!node.parent ? styles[node.name] : null}
-            onLongPress={linkLongPressHandler}
-          >
-            {linebreakBefore}
-            {listItemPrefix}
-            {domToElement(node.children, node)}
-            {linebreakAfter}
-          </NodeComponent>
+          containsList ?
+            <NodeViewComponent
+              {...opts.nodeComponentProps}
+              key={index}
+              onPress={linkPressHandler}
+              style={!node.parent ? styles[node.name] : null}
+            >
+              {linebreakBefore}
+              {listItemPrefix}
+              {domToElement(node.children, node)}
+              {linebreakAfter}
+            </NodeViewComponent>
+            :
+            <NodeComponent
+              {...opts.nodeComponentProps}
+              key={index}
+              onPress={linkPressHandler}
+              style={!node.parent ? styles[node.name] : null}
+            >
+              {linebreakBefore}
+              {listItemPrefix}
+              {domToElement(node.children, node)}
+              {linebreakAfter}
+            </NodeComponent>
         );
       }
     });
